@@ -1,9 +1,12 @@
 {
   "domain": "oppo_udp",
   "name": "Oppo UDP-20x",
+  "codeowners": ["@simbaja"],
   "config_flow": true,
   "documentation": "https://github.com/simbaja/ha_oppoudp",
-  "requirements": ["oppoudpsdk==0.1.19","magicattr==0.1.5","musicbrainzngs==0.7.1"],
-  "codeowners": ["@simbaja"],	
+  "integration_type": "device",
+  "iot_class": "local_push",
+  "loggers": ["oppoudpsdk", "musicbrainzngs"],
+  "requirements": ["oppoudpsdk==0.1.19", "magicattr==0.1.5", "musicbrainzngs==0.7.1"],
   "version": "0.1.19"
 }

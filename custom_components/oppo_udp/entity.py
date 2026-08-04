@@ -88,13 +88,16 @@ class OppoUdpEntity(Entity):
             self.async_client_created(client)
             self.schedule_update_ha_state()   
 
-        async_dispatcher_connect(
-            self.hass, f"{SIGNAL_CONNECTED}_{self._identifier}", _async_connected
+        self.async_on_remove(
+            async_dispatcher_connect(
+                self.hass, f"{SIGNAL_CONNECTED}_{self._identifier}", _async_connected
+            )
         )
-        async_dispatcher_connect(
-            self.hass, f"{SIGNAL_CLIENT_CREATED}_{self._identifier}", _async_client_created
-        )        
-
+        self.async_on_remove(
+            async_dispatcher_connect(
+                self.hass, f"{SIGNAL_CLIENT_CREATED}_{self._identifier}", _async_client_created
+            )
+        )
         self.async_on_remove(
             async_dispatcher_connect(
                 self.hass, f"{SIGNAL_DISCONNECTED}_{self._identifier}", _async_disconnected
