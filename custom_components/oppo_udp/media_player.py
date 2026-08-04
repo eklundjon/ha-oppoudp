@@ -218,7 +218,7 @@ class OppoUdpMediaPlayer(OppoUdpEntity, MediaPlayerEntity):
     def media_album_name(self):
         """Album name of current playing media, music track only."""
         if self.media_content_type == MediaType.MUSIC:
-            album = self.playback_info.track_performer
+            album = self.playback_info.track_album
             if (not album or album.endswith("*")) and self.musicbrainz_info and self.musicbrainz_info.title:
                 album = self.musicbrainz_info.title
             return album
@@ -431,9 +431,9 @@ class OppoUdpMediaPlayer(OppoUdpEntity, MediaPlayerEntity):
             if self.media_content_type == MediaType.VIDEO:
                 one_mode = SetRepeatMode.CHAPTER
             
-            if RepeatMode == Repeatmode.ONE:
+            if repeat == RepeatMode.ONE:
                 await self.device.async_set_repeat_mode(one_mode)
-            elif RepeatMode == RepeatMode.ALL:
+            elif repeat == RepeatMode.ALL:
                 await self.device.async_set_repeat_mode(SetRepeatMode.ALL)
             else:
                 await self.device.async_set_repeat_mode(SetRepeatMode.OFF)
