@@ -16,8 +16,6 @@ from homeassistant.components.media_player.const import (
 
 from homeassistant.const import (
     CONF_HOST,
-    STATE_PAUSED,
-    STATE_PLAYING,
 )
 from homeassistant.core import callback
 import homeassistant.util.dt as dt_util
@@ -104,7 +102,7 @@ class OppoUdpMediaPlayer(OppoUdpEntity, MediaPlayerEntity):
                 return MediaPlayerState.PLAYING
             if state in [PlayStatus.PAUSE, PlayStatus.SLOW_FORWARD, PlayStatus.SLOW_REVERSE, PlayStatus.FAST_FORWARD, PlayStatus.FAST_REVERSE]:
                 return MediaPlayerState.PAUSED
-            return MediaPlayerState.STANDBY
+            return MediaPlayerState.IDLE
         return None
 
     @property
@@ -178,7 +176,7 @@ class OppoUdpMediaPlayer(OppoUdpEntity, MediaPlayerEntity):
     @property
     def media_position_updated_at(self):
         """Last valid time of media position."""
-        if self.state in (STATE_PLAYING, STATE_PAUSED):
+        if self.state in (MediaPlayerState.PLAYING, MediaPlayerState.PAUSED):
             return dt_util.utcnow()
         return None
 
