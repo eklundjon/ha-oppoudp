@@ -1,4 +1,6 @@
 """ ConfigFlow for the Oppo UDP-20x Integration """
+from __future__ import annotations
+
 import logging
 import ipaddress
 import re
@@ -14,11 +16,14 @@ from .exceptions import HaAlreadyConfigured, HaCannotConnect, HaInvalidHost
 
 _LOGGER = logging.getLogger(__name__)
 
-DATA_SCHEMA = vol.Schema(
-    {
-        vol.Required(CONF_HOST): str,
-        vol.Required(CONF_PORT, default=DEFAULT_PORT): int,
-    })
+def _data_schema(host: str = "", port: int = DEFAULT_PORT) -> vol.Schema:
+    """Build the host/port schema, optionally pre-filled for reconfigure."""
+    return vol.Schema(
+        {
+            vol.Required(CONF_HOST, default=host): str,
+            vol.Required(CONF_PORT, default=port): int,
+        }
+    )
 
 def host_valid(host: str) -> bool:
     """Return True if hostname or IP address is valid."""
@@ -30,32 +35,20 @@ def host_valid(host: str) -> bool:
     if len(host) > 253:
         return False
     allowed = re.compile(r"(?!-)[A-Z\d\-\_]{1,63}(?<!-)$", re.IGNORECASE)
-    return all(allowed.match(x) for x in host.split("."))    
+    return all(allowed.match(x) for x in host.split("."))
 
 class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow for Oppo UDP-20x."""
 
     VERSION = 1
-    CONNECTION_CLASS = config_entries.CONN_CLASS_LOCAL_PUSH
 
     async def async_step_user(self, user_input=None):
         """Handle the initial step."""
         errors = {}
-        
+
         if user_input is not None:
             try:
-                if not host_valid(user_input[CONF_HOST]):
-                    raise HaInvalidHost
-                
-                host: str = user_input[CONF_HOST]
-                port: int = user_input[CONF_PORT]
-
-                if self.host_already_configured(host):
-                    raise HaAlreadyConfigured
-                
-                await self.test_connection(host, port)
-
-                return self.async_create_entry(title=host, data=user_input)
+                await self._validate(user_input)
             except HaCannotConnect:
                 errors[CONF_HOST] = "cannot_connect"
             except HaAlreadyConfigured:
@@ -65,27 +58,71 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             except Exception:  # pylint: disable=broad-except
                 _LOGGER.exception("Unexpected exception")
                 errors["base"] = "unknown"
+            else:
+                return self.async_create_entry(
+                    title=user_input[CONF_HOST], data=user_input
+                )
 
-        # If there is no user input or there were errors, show the form again, including any errors that were found with the input.
         return self.async_show_form(
-            step_id="user", data_schema=DATA_SCHEMA, errors=errors
+            step_id="user", data_schema=_data_schema(), errors=errors
         )
 
-    def host_already_configured(self, host: str) -> bool:
-        """See if we already have a dunehd entry matching user input configured."""
-        existing_hosts = {
-            entry.data[CONF_HOST] for entry in self._async_current_entries()
-        }
-        return host in existing_hosts        
+    async def async_step_reconfigure(self, user_input=None):
+        """Handle reconfiguration of an existing entry (e.g. changed IP/port)."""
+        errors = {}
+        entry = self._get_reconfigure_entry()
 
-    async def test_connection(self, host: str, port: int):
-        """Validate the user input allows us to connect."""
+        if user_input is not None:
+            try:
+                await self._validate(user_input, ignore_entry_id=entry.entry_id)
+            except HaCannotConnect:
+                errors[CONF_HOST] = "cannot_connect"
+            except HaAlreadyConfigured:
+                errors[CONF_HOST] = "already_configured"
+            except HaInvalidHost:
+                errors[CONF_HOST] = "invalid_host"
+            except Exception:  # pylint: disable=broad-except
+                _LOGGER.exception("Unexpected exception")
+                errors["base"] = "unknown"
+            else:
+                return self.async_update_reload_and_abort(
+                    entry, title=user_input[CONF_HOST], data_updates=user_input
+                )
 
-        #connect to the client
-        try:            
-            client = OppoClient(host, port)
-            result = await client.test_connection()
-            if not result:
-                raise HaCannotConnect
-        except:
+        return self.async_show_form(
+            step_id="reconfigure",
+            data_schema=_data_schema(
+                entry.data[CONF_HOST], entry.data.get(CONF_PORT, DEFAULT_PORT)
+            ),
+            errors=errors,
+        )
+
+    async def _validate(self, user_input, ignore_entry_id: str | None = None) -> None:
+        """Validate host, dedup, and connectivity; raise on failure."""
+        host = user_input[CONF_HOST]
+        port = user_input[CONF_PORT]
+
+        if not host_valid(host):
+            raise HaInvalidHost
+        if self._host_configured(host, ignore_entry_id):
+            raise HaAlreadyConfigured
+        await self.test_connection(host, port)
+
+    def _host_configured(self, host: str, ignore_entry_id: str | None = None) -> bool:
+        """Return True if another entry already uses this host."""
+        return any(
+            entry.data.get(CONF_HOST) == host
+            for entry in self._async_current_entries()
+            if entry.entry_id != ignore_entry_id
+        )
+
+    async def test_connection(self, host: str, port: int) -> None:
+        """Validate that we can connect to the device."""
+        client = OppoClient(host, port)
+        try:
+            connected = await client.test_connection()
+        except Exception as err:  # pylint: disable=broad-except
+            _LOGGER.debug("Connection test to %s:%s failed: %s", host, port, err)
+            raise HaCannotConnect from err
+        if not connected:
             raise HaCannotConnect

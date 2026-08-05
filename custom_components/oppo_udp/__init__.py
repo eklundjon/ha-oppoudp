@@ -51,7 +51,3 @@ async def async_unload_entry(hass: HomeAssistant, entry: OppoConfigEntry):
         await entry.runtime_data.disconnect()
 
     return unload_ok
-
-async def async_update_options(hass, config_entry):
-    """Update options."""
-    await hass.config_entries.async_reload(config_entry.entry_id)
