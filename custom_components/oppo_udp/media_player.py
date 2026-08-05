@@ -414,7 +414,7 @@ class OppoUdpMediaPlayer(OppoUdpEntity, MediaPlayerEntity):
         if self.device:
             seek_type = SetSearchMode.CHAPTER if self.media_content_type == MediaType.MUSIC else SetSearchMode.TITLE
             seek_position = timedelta(seconds=position)
-            await self.device.async_set_position(seek_type, seek_position)
+            await self.device.async_seek_position(seek_type, seek_position)
 
     async def async_volume_up(self):
         """Turn volume up for media player."""
