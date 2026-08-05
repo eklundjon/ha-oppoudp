@@ -1,0 +1,76 @@
+name: Test
+
+on:
+  # Scoped to master: `pull_request` already covers PR branches, and an
+  # unfiltered `push` would run every workflow twice per PR push.
+  push:
+    branches: [master]
+  pull_request:
+
+jobs:
+  lint:
+    name: ruff
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      # Install the exact ruff pinned in requirements.test.txt rather than
+      # repeating the version here, so local and CI cannot drift and a
+      # Dependabot bump updates CI in the same PR.
+      - name: Install ruff (version from requirements.test.txt)
+        run: |
+          pin=$(grep -E '^ruff==' requirements.test.txt)
+          if [ -z "$pin" ]; then
+            echo "No pinned 'ruff==' line found in requirements.test.txt" >&2
+            exit 1
+          fi
+          echo "Installing $pin"
+          pip install "$pin"
+      # The vendored SDK is excluded via pyproject's extend-exclude.
+      - run: ruff check custom_components tests
+
+  pytest:
+    name: ${{ matrix.name }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Each PHACC release pins one exact Home Assistant version, so pinning
+          # PHACC pins HA. The Python version is part of the pin: HA moved to
+          # 3.14 in 2026.3 and PHACC followed, so testing current HA needs 3.14.
+          #
+          # NOTE: hacs.json declares a 2024.11 floor (runtime_data + the
+          # reconfigure helpers). The minimum job below tests 2025.2, which is
+          # >= that floor and exercises the same APIs; a dedicated 2024.11 job
+          # can be added later for exact-floor fidelity.
+          - name: "HA 2025.2 (minimum)"
+            phacc: "0.13.215"   # Home Assistant 2025.2.5 (needs Python >=3.13)
+            python: "3.13"
+          - name: "HA latest"
+            phacc: "0.13.345"   # Home Assistant 2026.7.1 (needs Python >=3.14)
+            python: "3.14"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+          cache: pip
+
+      - name: Install test dependencies
+        run: |
+          # Pin PHACC (and therefore HA) first; requirements.test then adds the
+          # integration's own deps without upgrading it.
+          pip install "pytest-homeassistant-custom-component==${{ matrix.phacc }}"
+          pip install -r requirements.test.txt
+
+      - name: Run tests
+        # Coverage of our own code (the vendored SDK is omitted — see setup.cfg).
+        # The floor is a starting point; ratchet it up as the suite grows rather
+        # than letting coverage drift down to meet it.
+        run: >-
+          pytest -q --cov=custom_components.oppo_udp
+          --cov-report=term-missing --cov-fail-under=50

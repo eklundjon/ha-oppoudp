@@ -1,0 +1,18 @@
+name: Validate with hassfest
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+  schedule:
+    - cron: "0 0 * * *"
+
+jobs:
+  # `name` is the check context branch protection matches on and must be unique
+  # across workflows, so this and the HACS job are named distinctly.
+  hassfest:
+    name: hassfest
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: home-assistant/actions/hassfest@master

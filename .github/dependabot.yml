@@ -1,0 +1,48 @@
+version: 2
+
+# Routine dependency-update PRs. Security alerts work off the dependency graph
+# and don't need this file.
+updates:
+  # GitHub Actions used by the workflows in .github/workflows/.
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: ci
+    groups:
+      actions:
+        patterns: ["*"]
+
+  # Python test dependencies (requirements.test.txt).
+  #
+  # PHACC is unpinned there (pinned per-job in test.yaml instead), so the useful
+  # target here is the ruff pin — which the lint job reads straight out of
+  # requirements.test.txt, so a bump updates CI in the same PR.
+  - package-ecosystem: pip
+    directory: "/"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: chore
+    groups:
+      python:
+        patterns: ["*"]
+    ignore:
+      # magicattr / musicbrainzngs mirror manifest.json's runtime requirements.
+      # The manifest is the source of truth; raise it there first, then mirror
+      # here. Confine the ignore to routine version bumps (not a bare
+      # dependency-name) so SECURITY update PRs still open — an unqualified
+      # ignore also suppresses those, per Dependabot's options reference.
+      - dependency-name: magicattr
+        update-types:
+          - version-update:semver-major
+          - version-update:semver-minor
+          - version-update:semver-patch
+      - dependency-name: musicbrainzngs
+        update-types:
+          - version-update:semver-major
+          - version-update:semver-minor
+          - version-update:semver-patch

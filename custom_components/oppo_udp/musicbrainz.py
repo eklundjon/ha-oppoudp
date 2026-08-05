@@ -1,9 +1,8 @@
 """Musicbrainz Query Helper"""
 
-import asyncio
 import logging
-from typing import Dict
 from dataclasses import dataclass
+
 import musicbrainzngs
 
 from .async_helpers import *
@@ -17,8 +16,8 @@ class MusicBrainzInfo:
   disc_id: str
   release_id: str = None
   artist: str = None
-  title: str = None 
-  track_titles: Dict[int,str] = None
+  title: str = None
+  track_titles: dict[int,str] = None
   image: str = None
 
 def musicbrainz_get_info(disc_id: str) -> MusicBrainzInfo:
@@ -38,7 +37,7 @@ def _parse_response(disc_id: str, response: dict) -> MusicBrainzInfo:
   elif response.get("cdstub"):
     _LOGGER.debug("CDSTUB found, returning.")
     return MusicBrainzInfo(
-      disc_id=disc_id, 
+      disc_id=disc_id,
       artist=response["cdstub"]["artist"],
       title=response["cdstub"]["title"]
     )
@@ -60,23 +59,23 @@ def _info_from_release(disc_id: str, rel: dict) -> MusicBrainzInfo:
     for disc in medium["disc-list"]:
       if disc["id"] == disc_id:
         for track in medium["track-list"]:
-          tracks[int(track["position"])] = track["recording"]["title"]        
+          tracks[int(track["position"])] = track["recording"]["title"]
         _LOGGER.debug(f"Found {len(tracks)} tracks")
         image = _get_image(mbid)
         if image:
-          _LOGGER.debug(f"Found coverart image")
+          _LOGGER.debug("Found coverart image")
         found = True
         break
     if found:
-      break 
+      break
 
   return MusicBrainzInfo(disc_id, mbid, artist, title, tracks, image)
 
-def _get_image(release_id: str):    
+def _get_image(release_id: str):
   try:
     return musicbrainzngs.get_image_front(release_id, "500")
   except Exception as err:
-    _LOGGER.info(f"Could not get image for disc, error={err}")  
+    _LOGGER.info(f"Could not get image for disc, error={err}")
     return None
 
 async_musicbrainz_get_info = async_wrap(musicbrainz_get_info)

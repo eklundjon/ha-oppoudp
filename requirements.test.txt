@@ -1,0 +1,27 @@
+# Test dependencies for the Oppo UDP-20x integration.
+#
+# PHACC (pytest-homeassistant-custom-component) pins the exact Home Assistant
+# version it was built against. CI pins a specific PHACC per matrix job — a
+# minimum and the latest — so this file leaves it unpinned, which locally pulls
+# the latest for a quick dev loop:
+#
+#     python -m venv .venv
+#     .venv/bin/pip install -r requirements.test.txt
+#     .venv/bin/python -m pytest
+#
+pytest
+pytest-asyncio
+pytest-cov
+pytest-homeassistant-custom-component
+
+# Linter — pinned so local and CI agree. CI's lint job installs this exact pin
+# by reading it out of this file rather than repeating the version, so the two
+# cannot drift, and a Dependabot bump updates CI in the same PR.
+ruff==0.15.20
+
+# The integration's runtime requirements, mirrored from manifest.json so the
+# test environment can import the package. The oppoudpsdk itself is vendored
+# in-tree (no PyPI dependency); only its own dep (magicattr) and the
+# integration's musicbrainz client are needed here.
+magicattr==0.1.5
+musicbrainzngs==0.7.1

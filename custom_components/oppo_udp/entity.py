@@ -2,16 +2,14 @@
 
 import logging
 
-from homeassistant.core import HomeAssistant, callback
+from homeassistant.core import callback
 from homeassistant.helpers.device_registry import DeviceInfo
-from homeassistant.helpers.entity import Entity
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
-
-
-from .oppoudpsdk import OppoDevice
+from homeassistant.helpers.entity import Entity
 
 from .const import DOMAIN, SIGNAL_CLIENT_CREATED, SIGNAL_CONNECTED, SIGNAL_DISCONNECTED
 from .manager import OppoUdpManager
+from .oppoudpsdk import OppoDevice
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -76,7 +74,7 @@ class OppoUdpEntity(Entity):
         def _async_client_created(client):
             """Handle when a client is created (due to reconnect)."""
             self.async_client_created(client)
-            self.async_write_ha_state()   
+            self.async_write_ha_state()
 
         self.async_on_remove(
             async_dispatcher_connect(
@@ -101,4 +99,4 @@ class OppoUdpEntity(Entity):
         """Handle when connection was lost to device."""
 
     def async_client_created(self, client):
-        """Handle when a new client is created (due to reconnections)."""    
+        """Handle when a new client is created (due to reconnections)."""
