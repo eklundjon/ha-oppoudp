@@ -21,7 +21,13 @@ ruff==0.15.20
 
 # The integration's runtime requirements, mirrored from manifest.json so the
 # test environment can import the package. The oppoudpsdk itself is vendored
-# in-tree (no PyPI dependency); only its own dep (magicattr) and the
-# integration's musicbrainz client are needed here.
+# in-tree (no PyPI dependency); only its own dep (magicattr), the integration's
+# musicbrainz client, and the Phase 4 transport library (serialx) are needed.
+#
+# serialx is pinned to the low end of the manifest's range so tests exercise the
+# floor we ship; the manifest is the source of truth (raise it there first, then
+# mirror). Dependabot is told to ignore routine bumps of this pin for that
+# reason (see .github/dependabot.yml).
 magicattr==0.1.5
 musicbrainzngs==0.7.1
+serialx==1.7.3
