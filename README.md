@@ -5,34 +5,53 @@
 [![License][license-shield]](LICENSE)
 [![hacs][hacsbadge]][hacs]
 
-Integration for Oppo UDP-20x Bluray players into Home Assistant.
+Home Assistant integration for Oppo UDP-20x Blu-ray players (UDP-203 / UDP-205).
 
-## Installation (Manual)
-
-1. Using the tool of choice open the directory (folder) for your HA configuration (where you find `configuration.yaml`).
-2. If you do not have a `custom_components` directory (folder) there, you need to create it.
-3. In the `custom_components` directory (folder) create a new folder called `oppo_udp`.
-4. Download _all_ the files from the `custom_components/oppo_udp/` directory (folder) in this repository.
-5. Place the files you downloaded in the new directory (folder) you created.
-6. Restart Home Assistant
-7. In the HA UI go to "Configuration" -> "Integrations" click "+" and search for "Oppo UDP"
+> **Maintained fork.** This is an actively-maintained continuation of
+> [`simbaja/ha_oppoudp`](https://github.com/simbaja/ha_oppoudp) by Jack Simbach,
+> which is no longer receiving updates. The integration domain is unchanged
+> (`oppo_udp`), so it installs as a drop-in replacement — existing entities,
+> history, and automations are preserved.
 
 ## Installation (HACS)
 
-Please follow directions [here](https://hacs.xyz/docs/faq/custom_repositories/), and use https://github.com/simbaja/ha_oppoudp as the repository URL.
+1. Add this repository as a [custom repository](https://hacs.xyz/docs/faq/custom_repositories/)
+   in HACS, using `https://github.com/eklundjon/ha-oppoudp` as the URL and
+   **Integration** as the category.
+2. Install "Oppo UDP-20x" and restart Home Assistant.
+3. In the HA UI go to **Settings → Devices & Services → Add Integration** and
+   search for "Oppo UDP".
+
+## Installation (Manual)
+
+1. Open the directory (folder) for your HA configuration (where `configuration.yaml` lives).
+2. Create a `custom_components` directory there if you don't have one.
+3. Copy the `custom_components/oppo_udp/` folder from this repository into it.
+4. Restart Home Assistant.
+5. Add the integration as described above.
+
 ## Configuration
 
-Configuration is done via the HA user interface.
-### Configuration Notes
+Configuration is done via the Home Assistant UI.
 
-1. When installing, the Oppo UDP must be ON so that it can pass the communications test.
-2. You should set the standby mode to "Network Standby"
+### Notes
 
-[commits-shield]: https://img.shields.io/github/commit-activity/y/simbaja/ha_oppoudp.svg?style=for-the-badge
-[commits]: https://github.com/simbaja/ha_oppoudp/commits/master
-[hacs]: https://github.com/custom-components/hacs
+1. The Oppo UDP must be **ON** during setup so it can pass the connection test.
+2. Set the player's standby mode to **"Network Standby"** so it stays reachable
+   while powered off.
+3. If the player's IP address changes, use the integration's **Reconfigure**
+   option to update it without deleting and re-adding the device.
+
+## Credits
+
+Originally created by [Jack Simbach](https://github.com/simbaja)
+([`simbaja/ha_oppoudp`](https://github.com/simbaja/ha_oppoudp)). Licensed under MIT.
+
+[commits-shield]: https://img.shields.io/github/commit-activity/y/eklundjon/ha-oppoudp.svg?style=for-the-badge
+[commits]: https://github.com/eklundjon/ha-oppoudp/commits/master
+[hacs]: https://github.com/hacs/integration
 [hacsbadge]: https://img.shields.io/badge/HACS-Custom-orange.svg?style=for-the-badge
-[license-shield]: https://img.shields.io/github/license/simbaja/ha_oppoudp.svg?style=for-the-badge
-[maintenance-shield]: https://img.shields.io/badge/maintainer-Jack%20Simbach%20%40simbaja-blue.svg?style=for-the-badge
-[releases-shield]: https://img.shields.io/github/release/simbaja/ha_oppoudp.svg?style=for-the-badge
-[releases]: https://github.com/simbaja/ha_oppoudp/releases
+[license-shield]: https://img.shields.io/github/license/eklundjon/ha-oppoudp.svg?style=for-the-badge
+[maintenance-shield]: https://img.shields.io/badge/maintainer-%40eklundjon-blue.svg?style=for-the-badge
+[releases-shield]: https://img.shields.io/github/release/eklundjon/ha-oppoudp.svg?style=for-the-badge
+[releases]: https://github.com/eklundjon/ha-oppoudp/releases
