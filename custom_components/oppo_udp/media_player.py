@@ -37,7 +37,7 @@ PARALLEL_UPDATES = 0
 async def async_setup_entry(hass, config_entry, async_add_entities):
     """Load Oppo UDP media player based on a config entry."""
     host = config_entry.data[CONF_HOST]
-    manager = hass.data[DOMAIN][config_entry.entry_id]
+    manager = config_entry.runtime_data
     async_add_entities([OppoUdpMediaPlayer(host, DOMAIN, config_entry.entry_id, manager)])
 
 class DeltaTemplate(Template):
@@ -55,6 +55,8 @@ def strfdelta(tdelta, fmt):
 
 class OppoUdpMediaPlayer(OppoUdpEntity, MediaPlayerEntity):
     """Representation of an Oppo UDP media player."""
+
+    _attr_name = None
 
     def __init__(self, host, name, identifier, manager, **kwargs):
         """Initialize the Oppo UDP media player."""
@@ -74,7 +76,7 @@ class OppoUdpMediaPlayer(OppoUdpEntity, MediaPlayerEntity):
 
     async def _on_device_state_updated(self, device: OppoDevice):
         """Handle a device state update event"""        
-        self.schedule_update_ha_state()
+        self.async_write_ha_state()
 
     async def _on_disc_id_changed(self, device: OppoDevice):
         """Handle when the disc id changes"""

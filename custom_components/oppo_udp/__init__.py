@@ -11,18 +11,20 @@ from homeassistant.helpers import config_validation as cv
 from .const import DOMAIN, PLATFORMS
 from .manager import OppoUdpManager
 
+OppoConfigEntry = ConfigEntry[OppoUdpManager]
+
 CONFIG_SCHEMA = cv.deprecated(DOMAIN)
 
 _LOGGER = logging.getLogger(__name__)
 
 async def async_setup(hass: HomeAssistant, config: dict):
     return True
-    
-async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
+
+async def async_setup_entry(hass: HomeAssistant, entry: OppoConfigEntry):
     """Set up the component."""
 
     manager = OppoUdpManager(hass, entry)
-    hass.data.setdefault(DOMAIN, {})[entry.entry_id] = manager
+    entry.runtime_data = manager
 
     async def on_hass_stop(event):
         """Stop updates when hass stops"""
@@ -41,15 +43,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
 
     return True
 
-async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
+async def async_unload_entry(hass: HomeAssistant, entry: OppoConfigEntry):
     """Unload a config entry."""
-    manager: OppoUdpManager = hass.data[DOMAIN][entry.entry_id] 
     unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
 
     if unload_ok:
-        hass.data[DOMAIN].pop(entry.entry_id)
-        await manager.disconnect()
-    
+        await entry.runtime_data.disconnect()
+
     return unload_ok
 
 async def async_update_options(hass, config_entry):

@@ -1,9 +1,9 @@
 """Base Entity for the Oppo UDP-20x integration."""
 
 import logging
-from typing import Dict, List, Optional
 
 from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity import Entity
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 
@@ -19,11 +19,16 @@ class OppoUdpEntity(Entity):
     """
     Base class for Oppo Home Assistant entities
     """
+
+    _attr_has_entity_name = True
+    _attr_should_poll = False
+
     def __init__(self, host: str, name: str, identifier: str, manager: OppoUdpManager):
         self._host = host
         self._name = name
         self._identifier = identifier
         self._manager = manager
+        self._attr_unique_id = identifier
 
     @property
     def device(self) -> OppoDevice:
@@ -39,33 +44,18 @@ class OppoUdpEntity(Entity):
         return self._host
 
     @property
-    def name(self):
-        """Return the name of the entity"""
-        return self._name
-
-    @property
-    def unique_id(self):
-        """Return a unique ID."""
-        return self._identifier
-
-    @property
-    def should_poll(self):
-        """No polling needed for Oppo"""
-        return False
-
-    @property
-    def device_info(self) -> Dict:
+    def device_info(self) -> DeviceInfo:
         """Device info dictionary."""
-        attrs = {
-            "identifiers": {(DOMAIN, self._identifier)},
-            "name": self.name,
-            "manufacturer": "Oppo",
-            "model": "UDP-20x"
-        }
+        info = DeviceInfo(
+            identifiers={(DOMAIN, self._identifier)},
+            name=self._manager.config_entry.title,
+            manufacturer="Oppo",
+            model="UDP-20x",
+        )
         if self._manager.device:
-            attrs["sw_version"] = self._manager.device.firmware_version
+            info["sw_version"] = self._manager.device.firmware_version
 
-        return attrs
+        return info
 
     async def async_added_to_hass(self):
         """Handle when an entity is about to be added to Home Assistant."""
@@ -74,19 +64,19 @@ class OppoUdpEntity(Entity):
         def _async_connected(device):
             """Handle that a connection was made to a device."""
             self.async_device_connected(device)
-            self.schedule_update_ha_state()
+            self.async_write_ha_state()
 
         @callback
         def _async_disconnected():
             """Handle that a connection to a device was lost."""
             self.async_device_disconnected()
-            self.schedule_update_ha_state()
+            self.async_write_ha_state()
 
         @callback
         def _async_client_created(client):
             """Handle when a client is created (due to reconnect)."""
             self.async_client_created(client)
-            self.schedule_update_ha_state()   
+            self.async_write_ha_state()   
 
         self.async_on_remove(
             async_dispatcher_connect(
