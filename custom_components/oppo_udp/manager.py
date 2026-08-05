@@ -10,8 +10,8 @@ from homeassistant.core import HomeAssistant, callback
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.helpers.dispatcher import async_dispatcher_send
 
-from oppoudpsdk import OppoClient, OppoDevice
-from oppoudpsdk import EVENT_DEVICE_STATE_UPDATED, EVENT_CONNECTED, EVENT_DISCONNECTED
+from .oppoudpsdk import OppoClient, OppoDevice
+from .oppoudpsdk import EVENT_DEVICE_STATE_UPDATED, EVENT_CONNECTED, EVENT_DISCONNECTED
 
 from .const import *
 from .exceptions import *
