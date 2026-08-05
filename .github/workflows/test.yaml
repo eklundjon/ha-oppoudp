@@ -12,8 +12,8 @@ jobs:
     name: ruff
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.13"
       # Install the exact ruff pinned in requirements.test.txt rather than
@@ -53,9 +53,9 @@ jobs:
             phacc: "0.13.345"   # Home Assistant 2026.7.1 (needs Python >=3.14)
             python: "3.14"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: ${{ matrix.python }}
           cache: pip
