@@ -9,5 +9,5 @@
   "issue_tracker": "https://github.com/eklundjon/ha-oppoudp/issues",
   "loggers": ["musicbrainzngs"],
   "requirements": ["magicattr==0.1.5", "musicbrainzngs==0.7.1"],
-  "version": "0.1.20b2"
+  "version": "0.2.0b1"
 }
