@@ -434,17 +434,17 @@ class OppoUdpMediaPlayer(OppoUdpEntity, MediaPlayerEntity):
                 one_mode = SetRepeatMode.CHAPTER
             
             if repeat == RepeatMode.ONE:
-                await self.device.async_set_repeat_mode(one_mode)
+                await self.device.async_repeat_mode(one_mode)
             elif repeat == RepeatMode.ALL:
-                await self.device.async_set_repeat_mode(SetRepeatMode.ALL)
+                await self.device.async_repeat_mode(SetRepeatMode.ALL)
             else:
-                await self.device.async_set_repeat_mode(SetRepeatMode.OFF)
+                await self.device.async_repeat_mode(SetRepeatMode.OFF)
 
     async def async_set_shuffle(self, shuffle):
         """Enable/disable shuffle mode."""
         if self.device:
             if self.media_content_type == MediaType.MUSIC:
                 if shuffle:
-                    await self.device.async_set_repeat_mode(SetRepeatMode.RANDOM)
+                    await self.device.async_repeat_mode(SetRepeatMode.RANDOM)
                 else:
-                    await self.device.async_set_repeat_mode(SetRepeatMode.OFF)
+                    await self.device.async_repeat_mode(SetRepeatMode.OFF)
