@@ -12,8 +12,8 @@ To OppoDevice it presents the small "client" surface the device binds to
 it presents the same manager surface they already read (device / online /
 config_entry) plus the SIGNAL_* dispatches, so the entity layer is unchanged.
 
-This module is a pure addition in this step; wiring it in (and retiring
-OppoUdpManager) is the next step. See docs/ARCHITECTURE.md.
+This replaces OppoUdpManager as the object stored in the config entry's
+runtime_data. See docs/ARCHITECTURE.md.
 """
 from __future__ import annotations
 

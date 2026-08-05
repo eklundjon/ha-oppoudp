@@ -8,9 +8,9 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers import config_validation as cv
 
 from .const import DOMAIN, PLATFORMS
-from .manager import OppoUdpManager
+from .controller import OppoController
 
-OppoConfigEntry = ConfigEntry[OppoUdpManager]
+OppoConfigEntry = ConfigEntry[OppoController]
 
 CONFIG_SCHEMA = cv.deprecated(DOMAIN)
 
@@ -22,21 +22,21 @@ async def async_setup(hass: HomeAssistant, config: dict):
 async def async_setup_entry(hass: HomeAssistant, entry: OppoConfigEntry):
     """Set up the component."""
 
-    manager = OppoUdpManager(hass, entry)
-    entry.runtime_data = manager
+    controller = OppoController(hass, entry)
+    entry.runtime_data = controller
 
     async def on_hass_stop(event):
-        """Stop updates when hass stops"""
-        await manager.disconnect()
+        """Stop the connection when Home Assistant stops."""
+        await controller.disconnect()
 
     entry.async_on_unload(
         hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STOP, on_hass_stop)
     )
 
     async def setup_platforms():
-        """Set up platforms and initiate connection."""
+        """Forward platforms first (so entities subscribe), then open the connection."""
         await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
-        await manager.async_start_client()
+        await controller.async_start()
 
     hass.async_create_task(setup_platforms())
 

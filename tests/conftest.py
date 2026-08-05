@@ -44,7 +44,7 @@ def mock_device():
 
 @pytest.fixture
 def mock_manager(mock_device):
-    """A stand-in OppoUdpManager exposing what entities read from it."""
+    """A stand-in OppoController exposing what entities read from it."""
     manager = MagicMock()
     manager.device = mock_device
     manager.online = True

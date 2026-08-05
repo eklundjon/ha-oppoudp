@@ -17,5 +17,4 @@ select = ["E", "F", "W", "I", "UP", "BLE"]
 # connection layer is replaced wholesale in the Phase 4 refactor, and
 # media_player's ATTR_* star import goes away with the diagnostic-sensor split.
 "custom_components/oppo_udp/media_player.py" = ["F403", "F405", "E501"]
-"custom_components/oppo_udp/manager.py" = ["F403", "F405", "E501", "E722", "BLE001", "W291"]
 "custom_components/oppo_udp/musicbrainz.py" = ["F403", "F405", "BLE001"]
