@@ -16,7 +16,22 @@ from .mapping import (
 if TYPE_CHECKING:
     from ..device import OppoDevice
 
-_LOGGER = logging.getLogger(__name__)    
+_LOGGER = logging.getLogger(__name__)
+
+
+def _parse_enum(enum_cls, value, default=None):
+  """Parse a wire value into an enum member, degrading gracefully.
+
+  The player occasionally emits a status string the enum does not list (an
+  ``UNKNOW`` truncation, or a firmware-specific value). Raising here would drop
+  the whole state update and spam the log, so fall back to the enum's
+  ``UNKNOWN`` member if it has one, otherwise ``default``.
+  """
+  try:
+    return enum_cls(value)
+  except ValueError:
+    _LOGGER.debug("Unrecognized %s value %r; falling back", enum_cls.__name__, value)
+    return getattr(enum_cls, "UNKNOWN", default)    
 
 class OppoParsedResponse(NamedTuple):
   code: str
@@ -80,17 +95,17 @@ class OppoTimeResponse(OppoResponse):
 class OppoPowerResponse(OppoResponse):
   @property
   def status(self) -> PowerStatus:
-    return PowerStatus(self._parameters[0])
+    return _parse_enum(PowerStatus, self._parameters[0])
 
 class OppoPlayResponse(OppoResponse):
   @property
   def status(self) -> PlayStatus:
-    return PlayStatus(self._parameters[0])
+    return _parse_enum(PlayStatus, self._parameters[0])
 
 class OppoHdmiModeResponse(OppoResponse):
   @property
   def mode(self) -> PlayStatus:
-    return HdmiMode(self._parameters[0])
+    return _parse_enum(HdmiMode, self._parameters[0])
 
 class OppoVolumeLevelResponse(OppoResponse):
   @property
@@ -98,58 +113,58 @@ class OppoVolumeLevelResponse(OppoResponse):
     try:
       return int(self._parameters[0])
     except:
-      return VolumeLevel(self._parameters[0])
+      return _parse_enum(VolumeLevel, self._parameters[0])
 
 class OppoZoomModeResponse(OppoResponse):
   def __init__(self, parsed: OppoParsedResponse, mutator: OppoStateMutator, raw_value: Optional[str] = None):
       super().__init__(parsed, mutator, raw_value, False)
   @property
   def mode(self) -> ZoomMode:
-    return ZoomMode(self._parameters[0])
+    return _parse_enum(ZoomMode, self._parameters[0])
 
 class OppoInputSourceResponse(OppoResponse):
   def __init__(self, parsed: OppoParsedResponse, mutator: OppoStateMutator, raw_value: Optional[str] = None):
       super().__init__(parsed, mutator, raw_value, False)
   @property
   def source(self) -> InputSource:
-    return InputSource(self._parameters[0])
+    return _parse_enum(InputSource, self._parameters[0])
 
 class OppoDiscTypeResponse(OppoResponse):
   @property
   def disc_type(self) -> DiscType:
-    return DiscType(self._parameters[0])
+    return _parse_enum(DiscType, self._parameters[0])
 
 class OppoHdrSettingResponse(OppoResponse):
   @property
   def setting(self) -> HdrSetting:
-    return HdrSetting(self._parameters[0])
+    return _parse_enum(HdrSetting, self._parameters[0])
 
 class OppoRepeatModeResponse(OppoResponse):
   def __init__(self, parsed: OppoParsedResponse, mutator: OppoStateMutator, raw_value: Optional[str] = None):
       super().__init__(parsed, mutator, raw_value, False)
   @property
   def mode(self) -> RepeatMode:
-    return RepeatMode(self._parameters[0])
+    return _parse_enum(RepeatMode, self._parameters[0])
 
 class OppoVideo3dStatusResponse(OppoResponse):
   @property
   def status(self) -> Video3dStatus:
-    return Video3dStatus(self._parameters[0])
+    return _parse_enum(Video3dStatus, self._parameters[0])
 
 class OppoVideoHdrStatusResponse(OppoResponse):
   @property
   def status(self) -> VideoHdrStatus:
-    return VideoHdrStatus(self._parameters[0])
+    return _parse_enum(VideoHdrStatus, self._parameters[0])
 
 class OppoSpeedModeResponse(OppoResponse):
   @property
   def mode(self) -> SpeedMode:
-    return SpeedMode(self._parameters[0])
+    return _parse_enum(SpeedMode, self._parameters[0])
 
 class OppoTrayStatusResponse(OppoResponse):
   @property
   def status(self) -> TrayStatus:
-    return TrayStatus(self._parameters[0])    
+    return _parse_enum(TrayStatus, self._parameters[0])    
 
 class OppoCurrentTotalResponse(OppoResponse):
   @property
@@ -167,7 +182,7 @@ class OppoUpdatePowerStatusResponse(OppoResponse):
 class OppoUpdatePlayStatusResponse(OppoResponse):
   @property
   def update_status(self) -> UpdatePlayStatus:
-    return UpdatePlayStatus(self._parameters[0])
+    return _parse_enum(UpdatePlayStatus, self._parameters[0])
   @property
   def play_status(self) -> Optional[PlayStatus]:
     try:
@@ -200,7 +215,7 @@ class OppoUpdatePlayStatusResponse(OppoResponse):
 class OppoUpdateDiscTypeResponse(OppoResponse):
   @property
   def disc_type(self) -> DiscType:
-    return _UPDATE_DISC_TYPE_TO_DISC_TYPE[UpdateDiscType(self._parameters[0])]
+    return _UPDATE_DISC_TYPE_TO_DISC_TYPE[_parse_enum(UpdateDiscType, self._parameters[0])]
 
 class OppoUpdateTimeResponse(OppoResponse):
   def __init__(self, parsed: OppoParsedResponse, mutator: OppoStateMutator, raw_value: Optional[str] = None):

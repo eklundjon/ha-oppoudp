@@ -9,7 +9,8 @@ from __future__ import annotations
 
 import pytest
 
-from custom_components.oppo_udp.oppoudpsdk import DiscType, PlayStatus
+from custom_components.oppo_udp.oppoudpsdk import DiscType, PlayStatus, RepeatMode
+from custom_components.oppo_udp.oppoudpsdk.response.response import _parse_enum
 
 
 @pytest.mark.parametrize(
@@ -44,3 +45,26 @@ def test_menu_statuses_use_spaces_not_underscores():
 )
 def test_disctype_parses_wire_strings(raw):
     assert DiscType(raw)
+
+
+def test_playstatus_unknown_wire_value():
+    # The player sends the 6-char truncation "UNKNOW" (cf. DiscType "UNKNOW-DISC").
+    assert PlayStatus.UNKNOWN.value == "UNKNOW"
+    assert PlayStatus("UNKNOW") is PlayStatus.UNKNOWN
+
+
+# ── defensive parsing: an unrecognized wire string must never raise ─────────────
+
+def test_parse_enum_falls_back_to_unknown():
+    # HOME_MENU / UNKNOW class: a status the enum doesn't list degrades to
+    # UNKNOWN instead of raising and dropping the whole state update.
+    assert _parse_enum(PlayStatus, "SOMETHING NEW") is PlayStatus.UNKNOWN
+
+
+def test_parse_enum_returns_default_without_unknown_member():
+    # RepeatMode has no UNKNOWN member, so it degrades to the default (None).
+    assert _parse_enum(RepeatMode, "BOGUS") is None
+
+
+def test_parse_enum_passes_through_valid_values():
+    assert _parse_enum(PlayStatus, "PLAY") is PlayStatus.PLAY

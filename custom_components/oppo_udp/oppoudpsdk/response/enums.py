@@ -34,7 +34,7 @@ class PlayStatus(enum.Enum):
   DISC_MENU = "DISC MENU"
   CLOSE = "CLOSE"
   OPEN = "OPEN"
-  UNKNOWN = "UNKNOWN"  
+  UNKNOWN = "UNKNOW"
 
   def __str__(self):
     return str(self.value)  
