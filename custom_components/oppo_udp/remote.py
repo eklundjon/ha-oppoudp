@@ -12,8 +12,8 @@ from homeassistant.components.remote import (
 from homeassistant.const import CONF_HOST
 from homeassistant.core import callback
 
-from oppoudpsdk import EVENT_DEVICE_STATE_UPDATED
-from oppoudpsdk import PowerStatus, OppoRemoteCode, OppoClient, OppoDevice
+from .oppoudpsdk import EVENT_DEVICE_STATE_UPDATED
+from .oppoudpsdk import PowerStatus, OppoRemoteCode, OppoClient, OppoDevice
 
 from .entity import OppoUdpEntity
 from .const import DOMAIN

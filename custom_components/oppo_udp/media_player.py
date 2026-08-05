@@ -20,11 +20,11 @@ from homeassistant.const import (
 from homeassistant.core import callback
 import homeassistant.util.dt as dt_util
 
-from oppoudpsdk import EVENT_DEVICE_STATE_UPDATED, EVENT_DISC_ID_CHANGED
-from oppoudpsdk import OppoClient, OppoDevice, OppoPlaybackStatus, OppoRemoteCode
-from oppoudpsdk import SetInputSource, SetRepeatMode, SetSearchMode
-from oppoudpsdk import DiscType, PlayStatus, RepeatMode as OppoRepeatMode, PowerStatus
-from oppoudpsdk.const import *
+from .oppoudpsdk import EVENT_DEVICE_STATE_UPDATED, EVENT_DISC_ID_CHANGED
+from .oppoudpsdk import OppoClient, OppoDevice, OppoPlaybackStatus, OppoRemoteCode
+from .oppoudpsdk import SetInputSource, SetRepeatMode, SetSearchMode
+from .oppoudpsdk import DiscType, PlayStatus, RepeatMode as OppoRepeatMode, PowerStatus
+from .oppoudpsdk.const import *
 
 from .entity import OppoUdpEntity
 from .const import DOMAIN

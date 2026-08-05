@@ -8,7 +8,7 @@ from homeassistant.helpers.entity import Entity
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 
 
-from oppoudpsdk import OppoDevice
+from .oppoudpsdk import OppoDevice
 
 from .const import DOMAIN, SIGNAL_CLIENT_CREATED, SIGNAL_CONNECTED, SIGNAL_DISCONNECTED
 from .manager import OppoUdpManager

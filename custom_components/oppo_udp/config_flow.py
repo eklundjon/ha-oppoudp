@@ -9,7 +9,7 @@ import voluptuous as vol
 
 from homeassistant import config_entries
 from homeassistant.const import CONF_HOST, CONF_PORT
-from oppoudpsdk import OppoClient
+from .oppoudpsdk import OppoClient
 
 from .const import DEFAULT_PORT, DOMAIN
 from .exceptions import HaAlreadyConfigured, HaCannotConnect, HaInvalidHost
