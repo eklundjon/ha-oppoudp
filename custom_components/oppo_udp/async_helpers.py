@@ -1,5 +1,6 @@
 import asyncio
-from functools import wraps, partial
+from functools import partial, wraps
+
 
 def async_wrap(func):
     @wraps(func)
@@ -8,4 +9,4 @@ def async_wrap(func):
             loop = asyncio.get_event_loop()
         pfunc = partial(func, *args, **kwargs)
         return await loop.run_in_executor(executor, pfunc)
-    return run 
+    return run

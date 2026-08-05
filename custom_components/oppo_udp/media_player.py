@@ -1,34 +1,41 @@
 """Support for Oppo UDP-20x media player."""
+import logging
 from datetime import timedelta
 from string import Template
-from typing import Optional
-import logging
+
+import homeassistant.util.dt as dt_util
 import musicbrainzngs
-
-from homeassistant.components.media_player import MediaPlayerEntity, MediaPlayerDeviceClass
-
+from homeassistant.components.media_player import MediaPlayerDeviceClass, MediaPlayerEntity
 from homeassistant.components.media_player.const import (
     MediaPlayerEntityFeature,
-    MediaType,
     MediaPlayerState,
+    MediaType,
     RepeatMode,
 )
-
 from homeassistant.const import (
     CONF_HOST,
 )
 from homeassistant.core import callback
-import homeassistant.util.dt as dt_util
 
-from .oppoudpsdk import EVENT_DEVICE_STATE_UPDATED, EVENT_DISC_ID_CHANGED
-from .oppoudpsdk import OppoClient, OppoDevice, OppoPlaybackStatus, OppoRemoteCode
-from .oppoudpsdk import SetInputSource, SetRepeatMode, SetSearchMode
-from .oppoudpsdk import DiscType, PlayStatus, RepeatMode as OppoRepeatMode, PowerStatus
-from .oppoudpsdk.const import *
-
-from .entity import OppoUdpEntity
 from .const import DOMAIN
-from .musicbrainz import async_musicbrainz_get_info, MusicBrainzInfo
+from .entity import OppoUdpEntity
+from .musicbrainz import MusicBrainzInfo, async_musicbrainz_get_info
+from .oppoudpsdk import (
+    EVENT_DEVICE_STATE_UPDATED,
+    EVENT_DISC_ID_CHANGED,
+    DiscType,
+    OppoClient,
+    OppoDevice,
+    OppoPlaybackStatus,
+    OppoRemoteCode,
+    PlayStatus,
+    PowerStatus,
+    SetInputSource,
+    SetRepeatMode,
+    SetSearchMode,
+)
+from .oppoudpsdk import RepeatMode as OppoRepeatMode
+from .oppoudpsdk.const import *
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -47,9 +54,9 @@ def strfdelta(tdelta, fmt):
     d = {"D": tdelta.days}
     hours, rem = divmod(tdelta.seconds, 3600)
     minutes, seconds = divmod(rem, 60)
-    d["H"] = '{:02d}'.format(hours)
-    d["M"] = '{:02d}'.format(minutes)
-    d["S"] = '{:02d}'.format(seconds)
+    d["H"] = f'{hours:02d}'
+    d["M"] = f'{minutes:02d}'
+    d["S"] = f'{seconds:02d}'
     t = DeltaTemplate(fmt)
     return t.substitute(**d)
 
@@ -75,7 +82,7 @@ class OppoUdpMediaPlayer(OppoUdpEntity, MediaPlayerEntity):
         client.add_event_handler(EVENT_DISC_ID_CHANGED, self._on_disc_id_changed)
 
     async def _on_device_state_updated(self, device: OppoDevice):
-        """Handle a device state update event"""        
+        """Handle a device state update event"""
         self.async_write_ha_state()
 
     async def _on_disc_id_changed(self, device: OppoDevice):
@@ -97,7 +104,7 @@ class OppoUdpMediaPlayer(OppoUdpEntity, MediaPlayerEntity):
         if self.playback_status:
             state = self.playback_status
             if state == PlayStatus.OFF:
-                return MediaPlayerState.OFF        
+                return MediaPlayerState.OFF
             if state in [PlayStatus.SETUP, PlayStatus.HOME_MENU, PlayStatus.MEDIA_CENTER]:
                 return MediaPlayerState.IDLE
             if state in [PlayStatus.PLAY, PlayStatus.DISC_MENU]:
@@ -117,12 +124,12 @@ class OppoUdpMediaPlayer(OppoUdpEntity, MediaPlayerEntity):
         if not self.device:
             return None
         return self.device.playback_attributes
-    
+
     @property
     def playback_status(self) -> PlayStatus:
         """The current playback status"""
         if not self.device:
-            return None        
+            return None
         return self.device.playback_status
 
     @property
@@ -137,7 +144,7 @@ class OppoUdpMediaPlayer(OppoUdpEntity, MediaPlayerEntity):
         """Boolean if volume is currently muted."""
         if self.device:
             return self.device.is_muted
-        return None        
+        return None
 
     @property
     def media_content_type(self):
@@ -158,7 +165,7 @@ class OppoUdpMediaPlayer(OppoUdpEntity, MediaPlayerEntity):
         return None
 
     @property
-    def media_duration(self):            
+    def media_duration(self):
         """Duration of current playing media in seconds."""
         if self.media_content_type == MediaType.MUSIC:
             return self.playback_info.track_duration.total_seconds()
@@ -191,7 +198,7 @@ class OppoUdpMediaPlayer(OppoUdpEntity, MediaPlayerEntity):
                 mb_track_name = self.musicbrainz_info.track_titles.get(self.media_track, None)
                 if mb_track_name:
                     return mb_track_name
-            return track_name    
+            return track_name
         if self.device:
             if self.playback_info.media_file_name:
                 return self.playback_info.media_file_name
@@ -233,19 +240,19 @@ class OppoUdpMediaPlayer(OppoUdpEntity, MediaPlayerEntity):
             artist = self.playback_info.track_performer
             if (not artist or artist.endswith("*")) and self.musicbrainz_info and self.musicbrainz_info.artist:
                 artist = self.musicbrainz_info.artist
-            return artist   
+            return artist
         return None
 
     @property
     def media_track(self):
         """Track number of current playing media, music track only."""
-        if self.media_content_type == MediaType.MUSIC:        
-            return self.playback_info.track        
+        if self.media_content_type == MediaType.MUSIC:
+            return self.playback_info.track
         return None
 
     @property
-    def media_image_hash(self) -> Optional[str]:
-        if self.media_content_type == MediaType.MUSIC:  
+    def media_image_hash(self) -> str | None:
+        if self.media_content_type == MediaType.MUSIC:
             if self.musicbrainz_info:
                 return self.musicbrainz_info.release_id
         return None
@@ -369,7 +376,7 @@ class OppoUdpMediaPlayer(OppoUdpEntity, MediaPlayerEntity):
 
     async def async_mute_volume(self, mute):
         """Mute the volume."""
-        await self.device.async_send_command(OppoRemoteCode.MUT)      
+        await self.device.async_send_command(OppoRemoteCode.MUT)
 
     async def async_set_volume_level(self, volume):
         """Set volume level, range 0..1."""
@@ -393,7 +400,7 @@ class OppoUdpMediaPlayer(OppoUdpEntity, MediaPlayerEntity):
         """Pause the media player."""
         if self.device:
             await self.device.async_send_command(OppoRemoteCode.PAU)
-            
+
     async def async_media_pop_up_menu(self):
         """send pop up menu command."""
         if self.device:
@@ -432,7 +439,7 @@ class OppoUdpMediaPlayer(OppoUdpEntity, MediaPlayerEntity):
         if self.device:
             if self.media_content_type == MediaType.VIDEO:
                 one_mode = SetRepeatMode.CHAPTER
-            
+
             if repeat == RepeatMode.ONE:
                 await self.device.async_repeat_mode(one_mode)
             elif repeat == RepeatMode.ALL:

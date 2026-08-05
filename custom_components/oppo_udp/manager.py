@@ -1,20 +1,22 @@
 """Connection manager Oppo UDP-20x integration."""
 
 import asyncio
-import async_timeout
 import logging
-from typing import Optional
 
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_HOST, CONF_MAC, CONF_PORT
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.config_entries import ConfigEntry
 from homeassistant.helpers.dispatcher import async_dispatcher_send
-
-from .oppoudpsdk import OppoClient, OppoDevice
-from .oppoudpsdk import EVENT_DEVICE_STATE_UPDATED, EVENT_CONNECTED, EVENT_DISCONNECTED
 
 from .const import *
 from .exceptions import *
+from .oppoudpsdk import (
+    EVENT_CONNECTED,
+    EVENT_DEVICE_STATE_UPDATED,
+    EVENT_DISCONNECTED,
+    OppoClient,
+    OppoDevice,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -89,9 +91,9 @@ class OppoUdpManager:
         """Try to reconnect oppo_udp session."""
         self._retry_count += 1
         _LOGGER.info(f"attempting to reconnect to oppo_udp service (attempt {self._retry_count})")
-        
+
         try:
-            with async_timeout.timeout(ASYNC_TIMEOUT):
+            async with asyncio.timeout(ASYNC_TIMEOUT):
                 await self.async_start_client()
         except Exception as err:
             _LOGGER.warn(f"could not reconnect: {err}, will retry in {self._get_retry_delay()} seconds")
@@ -113,7 +115,7 @@ class OppoUdpManager:
         except:
             _LOGGER.exception("An error occurred while disconnecting")
 
-    async def on_device_state_updated(self, device: OppoDevice):        
+    async def on_device_state_updated(self, device: OppoDevice):
         pass
 
     async def on_disconnect(self, _):
@@ -127,7 +129,7 @@ class OppoUdpManager:
         self._retry_count = 0
         self._dispatch_send(SIGNAL_CONNECTED, self.device)
 
-    def _create_oppo_client(self, event_loop: Optional[asyncio.AbstractEventLoop]) -> OppoClient:
+    def _create_oppo_client(self, event_loop: asyncio.AbstractEventLoop | None) -> OppoClient:
         """
         Create a new OppoClient object with some helpful callbacks.
 
@@ -141,7 +143,7 @@ class OppoUdpManager:
 
         #send a signal to all associated entities that we have a new client
         self._dispatch_send(SIGNAL_CLIENT_CREATED, client)
-        return client    
+        return client
 
     async def _get_client(self) -> OppoClient:
         """Get a new Oppo UDP client."""
@@ -153,7 +155,7 @@ class OppoUdpManager:
                 _LOGGER.warn(f'exception while disconnecting client {err}')
             finally:
                 self._reset_initialization()
-        
+
         loop = self._hass.loop
         self._client = self._create_oppo_client(event_loop=loop)
         return self._client

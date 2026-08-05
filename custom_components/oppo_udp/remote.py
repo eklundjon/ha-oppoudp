@@ -12,11 +12,15 @@ from homeassistant.components.remote import (
 from homeassistant.const import CONF_HOST
 from homeassistant.core import callback
 
-from .oppoudpsdk import EVENT_DEVICE_STATE_UPDATED
-from .oppoudpsdk import PowerStatus, OppoRemoteCode, OppoClient, OppoDevice
-
-from .entity import OppoUdpEntity
 from .const import DOMAIN
+from .entity import OppoUdpEntity
+from .oppoudpsdk import (
+    EVENT_DEVICE_STATE_UPDATED,
+    OppoClient,
+    OppoDevice,
+    OppoRemoteCode,
+    PowerStatus,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
