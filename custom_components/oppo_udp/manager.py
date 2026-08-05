@@ -3,7 +3,6 @@
 import asyncio
 import logging
 
-import async_timeout
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_HOST, CONF_MAC, CONF_PORT
 from homeassistant.core import HomeAssistant, callback
@@ -94,7 +93,7 @@ class OppoUdpManager:
         _LOGGER.info(f"attempting to reconnect to oppo_udp service (attempt {self._retry_count})")
 
         try:
-            with async_timeout.timeout(ASYNC_TIMEOUT):
+            async with asyncio.timeout(ASYNC_TIMEOUT):
                 await self.async_start_client()
         except Exception as err:
             _LOGGER.warn(f"could not reconnect: {err}, will retry in {self._get_retry_delay()} seconds")
