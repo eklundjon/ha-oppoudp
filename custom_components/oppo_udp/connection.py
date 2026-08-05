@@ -137,6 +137,18 @@ class OppoConnection:
             self.last_command = command
             _LOGGER.debug("Sent: %s", command)
 
+    async def send_bytes(self, data: bytes) -> None:
+        """Write pre-framed command bytes as-is (e.g. an SDK command's encode()).
+
+        Writes under the same lock as send() so command writes never interleave.
+        """
+        async with self._lock:
+            if not self.connected:
+                await self.connect()
+            self._writer.write(data)
+            await self._writer.drain()
+            _LOGGER.debug("Sent bytes: %r", data)
+
     async def query_one(
         self,
         command: str,
