@@ -25,11 +25,13 @@ PARALLEL_UPDATES = 0
 async def async_setup_entry(hass, config_entry, async_add_entities):
     """Load Oppo UDP remote based on a config entry."""
     host = config_entry.data[CONF_HOST]
-    manager = hass.data[DOMAIN][config_entry.entry_id]
+    manager = config_entry.runtime_data
     async_add_entities([OppoUdpRemote(host, DOMAIN, config_entry.entry_id, manager)])
 
 class OppoUdpRemote(OppoUdpEntity, RemoteEntity):
     """Device that sends commands to an Oppo UDP."""
+
+    _attr_name = "Remote"
 
     @callback
     def async_client_created(self, client: OppoClient):
@@ -37,19 +39,14 @@ class OppoUdpRemote(OppoUdpEntity, RemoteEntity):
         client.add_event_handler(EVENT_DEVICE_STATE_UPDATED, self._on_device_state_updated)
 
     async def _on_device_state_updated(self, device: OppoDevice):
-        """Handle a device state update event"""        
-        self.schedule_update_ha_state()    
+        """Handle a device state update event"""
+        self.async_write_ha_state()
 
     @property
     def is_on(self):
         """Return true if device is on."""
         if self.device:
             return self.device.power_status == PowerStatus.ON
-        return False
-
-    @property
-    def should_poll(self):
-        """No polling needed for Oppo UDP."""
         return False
 
     async def async_turn_on(self, **kwargs):

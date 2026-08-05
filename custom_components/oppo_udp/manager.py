@@ -62,6 +62,10 @@ class OppoUdpManager:
     def hass(self) -> HomeAssistant:
         return self._hass
 
+    @property
+    def config_entry(self) -> ConfigEntry:
+        return self._config_entry
+
     async def async_start_client(self):
         """Start a new OppoClient in the HASS event loop."""
         try:
