@@ -73,4 +73,4 @@ jobs:
         # than letting coverage drift down to meet it.
         run: >-
           pytest -q --cov=custom_components.oppo_udp
-          --cov-report=term-missing --cov-fail-under=55
+          --cov-report=term-missing --cov-fail-under=75

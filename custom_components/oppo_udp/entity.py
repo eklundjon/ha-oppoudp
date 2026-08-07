@@ -8,7 +8,7 @@ from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity import Entity
 
 from .const import DOMAIN, SIGNAL_CLIENT_CREATED, SIGNAL_CONNECTED, SIGNAL_DISCONNECTED
-from .manager import OppoUdpManager
+from .controller import OppoController
 from .oppoudpsdk import OppoDevice
 
 _LOGGER = logging.getLogger(__name__)
@@ -21,7 +21,7 @@ class OppoUdpEntity(Entity):
     _attr_has_entity_name = True
     _attr_should_poll = False
 
-    def __init__(self, host: str, name: str, identifier: str, manager: OppoUdpManager):
+    def __init__(self, host: str, name: str, identifier: str, manager: OppoController):
         self._host = host
         self._name = name
         self._identifier = identifier
