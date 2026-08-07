@@ -1,28 +1,52 @@
-""" ConfigFlow for the Oppo UDP-20x Integration """
+"""Config flow for the Oppo UDP-20x integration.
+
+The device speaks the same protocol over native IP control and RS-232, so the
+flow lets the user pick a transport and then collects only that transport's
+details. Each choice is turned into a serialx URL — ``socket://`` for IP,
+``rfc2217://`` / ``esphome://`` for a network serial gateway, and a bare
+``/dev/tty…`` path for a locally attached adapter — which is what the rest of
+the integration connects with (see connection.OppoConnection / entry_url).
+
+Legacy entries that predate the transport menu keep their host/port data and
+are migrated to ``socket://host:port`` at read time, so they need no re-add.
+"""
 from __future__ import annotations
 
 import ipaddress
 import logging
 import re
+from typing import Any
 
 import voluptuous as vol
-from homeassistant import config_entries
-from homeassistant.const import CONF_HOST, CONF_PORT
+from homeassistant.config_entries import (
+    SOURCE_RECONFIGURE,
+    ConfigEntry,
+    ConfigFlow,
+    ConfigFlowResult,
+)
+from homeassistant.const import CONF_DEVICE, CONF_HOST, CONF_PORT
 
-from .const import DEFAULT_PORT, DOMAIN
-from .exceptions import HaAlreadyConfigured, HaCannotConnect, HaInvalidHost
-from .oppoudpsdk import OppoClient
+from .connection import OppoConnection
+from .const import (
+    CONF_BAUDRATE,
+    CONF_URL,
+    DEFAULT_BAUDRATE,
+    DEFAULT_GATEWAY_PORT,
+    DEFAULT_PORT,
+    DEFAULT_SERIAL_DEVICE,
+    DOMAIN,
+)
+from .controller import entry_url
+from .exceptions import HaCannotConnect
 
 _LOGGER = logging.getLogger(__name__)
 
-def _data_schema(host: str = "", port: int = DEFAULT_PORT) -> vol.Schema:
-    """Build the host/port schema, optionally pre-filled for reconfigure."""
-    return vol.Schema(
-        {
-            vol.Required(CONF_HOST, default=host): str,
-            vol.Required(CONF_PORT, default=port): int,
-        }
-    )
+# serialx URL schemes we build. socket:// is the Oppo's native IP control port;
+# rfc2217/esphome reach the RS-232 port through a network serial gateway;
+# "serial" is a locally attached device path. Menu option ids == step ids.
+_NETWORK_SCHEMES = ("socket", "rfc2217", "esphome")
+_MENU_OPTIONS = ["socket", "rfc2217", "esphome", "serial"]
+
 
 def host_valid(host: str) -> bool:
     """Return True if hostname or IP address is valid."""
@@ -36,92 +60,187 @@ def host_valid(host: str) -> bool:
     allowed = re.compile(r"(?!-)[A-Z\d\-\_]{1,63}(?<!-)$", re.IGNORECASE)
     return all(allowed.match(x) for x in host.split("."))
 
-class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
+
+def _network_schema(host: str = "", port: int = DEFAULT_PORT) -> vol.Schema:
+    return vol.Schema(
+        {
+            vol.Required(CONF_HOST, default=host): str,
+            vol.Required(CONF_PORT, default=port): int,
+        }
+    )
+
+
+def _serial_schema(
+    device: str = DEFAULT_SERIAL_DEVICE, baudrate: int = DEFAULT_BAUDRATE
+) -> vol.Schema:
+    return vol.Schema(
+        {
+            vol.Required(CONF_DEVICE, default=device): str,
+            vol.Required(CONF_BAUDRATE, default=baudrate): int,
+        }
+    )
+
+
+def _parse_url(url: str) -> tuple[str, str, int | None, str]:
+    """Split a serialx URL into (kind, host, port, device).
+
+    kind is one of the menu options. Network URLs yield host/port; anything
+    without a known scheme is treated as a local serial device path.
+    """
+    for scheme in _NETWORK_SCHEMES:
+        prefix = f"{scheme}://"
+        if url.startswith(prefix):
+            host, _, port = url[len(prefix):].partition(":")
+            return scheme, host, (int(port) if port.isdigit() else None), ""
+    return "serial", "", None, url
+
+
+async def _probe(url: str, baudrate: int) -> None:
+    """Open the transport and confirm a live Oppo answers.
+
+    Raises TimeoutError/OSError if the transport can't be opened, or
+    HaCannotConnect if it opens but the device never replies (a bare TCP
+    gateway may accept the connection with nothing attached). A direct #QVR
+    query is answered regardless of the device's verbose-push mode.
+    """
+    conn = OppoConnection(url, baudrate=baudrate)
+    try:
+        await conn.start()
+        reply = await conn.query_one("#QVR", prefix="@")
+    finally:
+        await conn.stop()
+    if reply is None:
+        raise HaCannotConnect
+
+
+class OppoUdpConfigFlow(ConfigFlow, domain=DOMAIN):
     """Handle a config flow for Oppo UDP-20x."""
 
     VERSION = 1
 
-    async def async_step_user(self, user_input=None):
-        """Handle the initial step."""
-        errors = {}
+    async def async_step_user(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Pick a connection type, then collect its details in a sub-step."""
+        return self.async_show_menu(step_id="user", menu_options=_MENU_OPTIONS)
 
+    async def async_step_reconfigure(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Re-pick the connection type — e.g. to move to a serial gateway."""
+        return self.async_show_menu(step_id="reconfigure", menu_options=_MENU_OPTIONS)
+
+    # ── Per-scheme connection steps (shared by add + reconfigure) ──────────────
+
+    async def async_step_socket(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        return await self._async_network_step("socket", user_input)
+
+    async def async_step_rfc2217(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        return await self._async_network_step("rfc2217", user_input)
+
+    async def async_step_esphome(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        return await self._async_network_step("esphome", user_input)
+
+    async def _async_network_step(
+        self, scheme: str, user_input: dict[str, Any] | None
+    ) -> ConfigFlowResult:
+        errors: dict[str, str] = {}
         if user_input is not None:
-            try:
-                await self._validate(user_input)
-            except HaCannotConnect:
-                errors[CONF_HOST] = "cannot_connect"
-            except HaAlreadyConfigured:
-                errors[CONF_HOST] = "already_configured"
-            except HaInvalidHost:
+            host, port = user_input[CONF_HOST], user_input[CONF_PORT]
+            if not host_valid(host):
                 errors[CONF_HOST] = "invalid_host"
-            except Exception:  # pylint: disable=broad-except
-                _LOGGER.exception("Unexpected exception")
-                errors["base"] = "unknown"
             else:
-                return self.async_create_entry(
-                    title=user_input[CONF_HOST], data=user_input
+                url = f"{scheme}://{host}:{port}"
+                result = await self._async_validate_and_finish(
+                    url, DEFAULT_BAUDRATE, errors
                 )
-
+                if result is not None:
+                    return result
+        else:
+            host, port = self._network_defaults(scheme)
         return self.async_show_form(
-            step_id="user", data_schema=_data_schema(), errors=errors
+            step_id=scheme, data_schema=_network_schema(host, port), errors=errors
         )
 
-    async def async_step_reconfigure(self, user_input=None):
-        """Handle reconfiguration of an existing entry (e.g. changed IP/port)."""
-        errors = {}
-        entry = self._get_reconfigure_entry()
-
+    async def async_step_serial(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        errors: dict[str, str] = {}
         if user_input is not None:
-            try:
-                await self._validate(user_input, ignore_entry_id=entry.entry_id)
-            except HaCannotConnect:
-                errors[CONF_HOST] = "cannot_connect"
-            except HaAlreadyConfigured:
-                errors[CONF_HOST] = "already_configured"
-            except HaInvalidHost:
-                errors[CONF_HOST] = "invalid_host"
-            except Exception:  # pylint: disable=broad-except
-                _LOGGER.exception("Unexpected exception")
-                errors["base"] = "unknown"
-            else:
-                return self.async_update_reload_and_abort(
-                    entry, title=user_input[CONF_HOST], data_updates=user_input
-                )
-
+            device, baudrate = user_input[CONF_DEVICE], user_input[CONF_BAUDRATE]
+            result = await self._async_validate_and_finish(device, baudrate, errors)
+            if result is not None:
+                return result
+        else:
+            device, baudrate = self._serial_defaults()
         return self.async_show_form(
-            step_id="reconfigure",
-            data_schema=_data_schema(
-                entry.data[CONF_HOST], entry.data.get(CONF_PORT, DEFAULT_PORT)
-            ),
+            step_id="serial",
+            data_schema=_serial_schema(device, baudrate),
             errors=errors,
         )
 
-    async def _validate(self, user_input, ignore_entry_id: str | None = None) -> None:
-        """Validate host, dedup, and connectivity; raise on failure."""
-        host = user_input[CONF_HOST]
-        port = user_input[CONF_PORT]
+    # ── Helpers ────────────────────────────────────────────────────────────────
 
-        if not host_valid(host):
-            raise HaInvalidHost
-        if self._host_configured(host, ignore_entry_id):
-            raise HaAlreadyConfigured
-        await self.test_connection(host, port)
+    def _reconfigure_entry(self) -> ConfigEntry | None:
+        if self.source != SOURCE_RECONFIGURE:
+            return None
+        return self._get_reconfigure_entry()
 
-    def _host_configured(self, host: str, ignore_entry_id: str | None = None) -> bool:
-        """Return True if another entry already uses this host."""
+    def _network_defaults(self, scheme: str) -> tuple[str, int]:
+        default_port = DEFAULT_PORT if scheme == "socket" else DEFAULT_GATEWAY_PORT
+        if entry := self._reconfigure_entry():
+            kind, host, port, _ = _parse_url(entry_url(entry))
+            if kind == scheme:
+                return host, port or default_port
+        return "", default_port
+
+    def _serial_defaults(self) -> tuple[str, int]:
+        if entry := self._reconfigure_entry():
+            kind, _, _, device = _parse_url(entry_url(entry))
+            if kind == "serial":
+                return device, entry.data.get(CONF_BAUDRATE, DEFAULT_BAUDRATE)
+        return DEFAULT_SERIAL_DEVICE, DEFAULT_BAUDRATE
+
+    def _url_configured(self, url: str, ignore_entry_id: str | None = None) -> bool:
+        """Return True if another entry already resolves to this URL."""
         return any(
-            entry.data.get(CONF_HOST) == host
+            entry_url(entry) == url
             for entry in self._async_current_entries()
             if entry.entry_id != ignore_entry_id
         )
 
-    async def test_connection(self, host: str, port: int) -> None:
-        """Validate that we can connect to the device."""
-        client = OppoClient(host, port)
+    async def _async_validate_and_finish(
+        self, url: str, baudrate: int, errors: dict[str, str]
+    ) -> ConfigFlowResult | None:
+        """Dedup + probe; on success create/update the entry, else fill errors."""
+        entry = self._reconfigure_entry()
+        if self._url_configured(url, entry.entry_id if entry else None):
+            errors["base"] = "already_configured"
+            return None
         try:
-            connected = await client.test_connection()
-        except Exception as err:  # pylint: disable=broad-except
-            _LOGGER.debug("Connection test to %s:%s failed: %s", host, port, err)
-            raise HaCannotConnect from err
-        if not connected:
-            raise HaCannotConnect
+            await _probe(url, baudrate)
+        except (TimeoutError, OSError, HaCannotConnect) as err:
+            _LOGGER.debug("Probe of %s failed: %s", url, err)
+            errors["base"] = "cannot_connect"
+            return None
+        except Exception:  # noqa: BLE001
+            _LOGGER.exception("Unexpected error probing %s", url)
+            errors["base"] = "unknown"
+            return None
+
+        data = {CONF_URL: url, CONF_BAUDRATE: baudrate}
+        title = self._title_for(url)
+        if entry:
+            return self.async_update_reload_and_abort(entry, title=title, data=data)
+        return self.async_create_entry(title=title, data=data)
+
+    @staticmethod
+    def _title_for(url: str) -> str:
+        _, host, _, device = _parse_url(url)
+        return host or device or url
