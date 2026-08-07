@@ -2,7 +2,11 @@
 from __future__ import annotations
 
 import pytest
-from homeassistant.components.media_player import MediaPlayerState, RepeatMode
+from homeassistant.components.media_player import (
+    MediaPlayerEntityFeature,
+    MediaPlayerState,
+    RepeatMode,
+)
 
 from custom_components.oppo_udp.const import DOMAIN
 from custom_components.oppo_udp.media_player import OppoUdpMediaPlayer
@@ -12,6 +16,18 @@ from tests.conftest import MOCK_HOST
 
 def _player(manager):
     return OppoUdpMediaPlayer(MOCK_HOST, DOMAIN, "entry_id", manager)
+
+
+def test_supported_features_only_advertises_implemented(mock_manager):
+    # HA errors if an entity advertises a feature it can't fulfill. We implement
+    # neither async_browse_media nor async_play_media, so those must be absent.
+    features = _player(mock_manager).supported_features
+    assert not (features & MediaPlayerEntityFeature.BROWSE_MEDIA)
+    assert not (features & MediaPlayerEntityFeature.PLAY_MEDIA)
+    # Sanity: features we do implement remain advertised.
+    assert features & MediaPlayerEntityFeature.PLAY
+    assert features & MediaPlayerEntityFeature.SEEK
+    assert features & MediaPlayerEntityFeature.SELECT_SOURCE
 
 
 # ── state mapping ──────────────────────────────────────────────────────────────

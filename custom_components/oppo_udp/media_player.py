@@ -308,12 +308,10 @@ class OppoUdpMediaPlayer(OppoUdpEntity, MediaPlayerEntity):
     def supported_features(self):
         return (
             MediaPlayerEntityFeature.PLAY
-            | MediaPlayerEntityFeature.PLAY_MEDIA
             | MediaPlayerEntityFeature.PAUSE
             | MediaPlayerEntityFeature.STOP
             | MediaPlayerEntityFeature.VOLUME_SET
             | MediaPlayerEntityFeature.VOLUME_MUTE
-            | MediaPlayerEntityFeature.BROWSE_MEDIA
             | MediaPlayerEntityFeature.SEEK
             | MediaPlayerEntityFeature.TURN_OFF
             | MediaPlayerEntityFeature.TURN_ON
