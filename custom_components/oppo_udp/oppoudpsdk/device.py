@@ -1,16 +1,13 @@
 import logging
 import asyncio
-from typing import Optional, TYPE_CHECKING
+from typing import Any, Optional
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from .const import *
 from .command import *
 from .response import *
 from .codes import *
 from .helpers import clamp
-
-if TYPE_CHECKING:
-    from .client import OppoClient
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -46,7 +43,10 @@ class OppoPlaybackStatus:
 
 class OppoDevice:
   """Represents a low-level Oppo device"""
-  def __init__(self, client: 'OppoClient', mac_address: Optional[str] = None):
+  def __init__(self, client: Any, mac_address: Optional[str] = None):
+    # `client` is any object presenting the client surface this device binds to
+    # (add_event_handler / async_event / async_send_command / loop). In this
+    # integration that is the OppoController; the old OppoClient is retired.
     self._client = client
     self._mac_address = mac_address
     self._client.add_event_handler(EVENT_MESSAGE_RECEIVED, self._on_message_received)
@@ -209,7 +209,7 @@ class OppoDevice:
     self._cddb_id = ""
     self.cddb_id_1 = ""
     self.cddb_id_2 = ""
-    self.last_update_at = datetime.utcnow()
+    self.last_update_at = datetime.now(timezone.utc)
 
     self.playback_attributes = OppoPlaybackStatus()
 
@@ -220,11 +220,11 @@ class OppoDevice:
     pa.chapter_duration = pa.chapter_elapsed_time + pa.chapter_remaining_time
     pa.total_duration = pa.total_elapsed_time + pa.total_remaining_time
 
-  async def _on_client_connected(self, client: 'OppoClient'):
+  async def _on_client_connected(self, client: Any):
     """Handles the client connected event"""
     self.power_status = PowerStatus.UNKNOWN
 
-  async def _on_client_disconnected(self, client: 'OppoClient'):
+  async def _on_client_disconnected(self, client: Any):
     """Handles the client disconnected event"""
     self.power_status = PowerStatus.DISCONNECTED
     self._reset_attributes()
@@ -255,7 +255,7 @@ class OppoDevice:
         await response.mutate_state(self)
 
       #indicate when we last updated
-      self.last_update_at = datetime.utcnow()
+      self.last_update_at = datetime.now(timezone.utc)
 
       if self._state_events_enabled:
         await self._client.async_event(EVENT_DEVICE_STATE_UPDATED, self)

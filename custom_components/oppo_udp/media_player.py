@@ -18,13 +18,13 @@ from homeassistant.const import (
 from homeassistant.core import callback
 
 from .const import DOMAIN
+from .controller import OppoController
 from .entity import OppoUdpEntity
 from .musicbrainz import MusicBrainzInfo, async_musicbrainz_get_info
 from .oppoudpsdk import (
     EVENT_DEVICE_STATE_UPDATED,
     EVENT_DISC_ID_CHANGED,
     DiscType,
-    OppoClient,
     OppoDevice,
     OppoPlaybackStatus,
     OppoRemoteCode,
@@ -76,7 +76,7 @@ class OppoUdpMediaPlayer(OppoUdpEntity, MediaPlayerEntity):
         return self._musicbrainz_info
 
     @callback
-    def async_client_created(self, client: OppoClient):
+    def async_client_created(self, client: OppoController):
         """Handle when a new client is created (due to reconnections)."""
         client.add_event_handler(EVENT_DEVICE_STATE_UPDATED, self._on_device_state_updated)
         client.add_event_handler(EVENT_DISC_ID_CHANGED, self._on_disc_id_changed)

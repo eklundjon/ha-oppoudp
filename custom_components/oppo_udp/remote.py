@@ -13,10 +13,10 @@ from homeassistant.const import CONF_HOST
 from homeassistant.core import callback
 
 from .const import DOMAIN
+from .controller import OppoController
 from .entity import OppoUdpEntity
 from .oppoudpsdk import (
     EVENT_DEVICE_STATE_UPDATED,
-    OppoClient,
     OppoDevice,
     OppoRemoteCode,
     PowerStatus,
@@ -38,7 +38,7 @@ class OppoUdpRemote(OppoUdpEntity, RemoteEntity):
     _attr_name = "Remote"
 
     @callback
-    def async_client_created(self, client: OppoClient):
+    def async_client_created(self, client: OppoController):
         """Handle when a new client is created (due to reconnections)."""
         client.add_event_handler(EVENT_DEVICE_STATE_UPDATED, self._on_device_state_updated)
 

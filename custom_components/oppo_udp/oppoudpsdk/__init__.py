@@ -7,5 +7,4 @@ from .const import *
 from .exceptions import *
 from .command import *
 from .response.enums import *
-from .client import OppoClient
 from .device import OppoDevice, OppoPlaybackStatus
