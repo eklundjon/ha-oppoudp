@@ -172,6 +172,18 @@ class OppoDevice:
 
   async def async_send_command(self, code: OppoRemoteCodeType):
     """Sends a remote command to the device"""
+    # Record the intended power target so stale solicited power replies that
+    # contradict a just-issued transition are dropped (see
+    # _handle_power_response) — this is what stops the off->on->off bounce.
+    code_str = code.value if isinstance(code, OppoRemoteCode) else str(code)
+    if code_str == OppoRemoteCode.POF.value:
+      self._power_target = PowerStatus.OFF
+    elif code_str == OppoRemoteCode.PON.value:
+      self._power_target = PowerStatus.ON
+    elif code_str == OppoRemoteCode.POW.value:
+      self._power_target = (
+        PowerStatus.OFF if self.power_status == PowerStatus.ON else PowerStatus.ON
+      )
     await self._client.async_send_command(OppoRemoteCommand(code))
 
   async def async_set_input_source(self, source: SetInputSource):
@@ -194,7 +206,25 @@ class OppoDevice:
     await self._client.async_send_command(OppoSetRepeatModeCommand(mode))
 
   def _reset_attributes(self):
-    """Initializes/resets device attributes"""
+    """Reset all device state for a fresh connection.
+
+    Also clears the command-generation power gate — a new connection has no
+    outstanding command. A power-off resets only the volatile runtime state
+    (see _reset_runtime_state), deliberately keeping the gate.
+    """
+    # Command-generation gate: the power state we last commanded or saw the
+    # device push. Solicited replies that contradict it are treated as stale
+    # (see _handle_power_response). None until the first command/push.
+    self._power_target: Optional[PowerStatus] = None
+    self._reset_runtime_state()
+
+  def _reset_runtime_state(self):
+    """Clear volatile device state (playback position/status, inputs, etc.).
+
+    Runs on a fresh connection and whenever the player powers off, so a later
+    power-on doesn't momentarily surface the pre-off position/status before the
+    booting player reports fresh state. The power gate is preserved.
+    """
     self.is_muted = False
     self.tray_status = TrayStatus.CLOSE
     self.volume = 0
@@ -241,9 +271,9 @@ class OppoDevice:
     try:
       #handle various special messages first (affecting play status/power)
       if isinstance(response, OppoPowerResponse):
-        await self._handle_power_response(response.status)
+        await self._handle_power_response(response.status, is_push=False)
       elif isinstance(response, OppoUpdatePowerStatusResponse):
-        await self._handle_power_response(response.status)
+        await self._handle_power_response(response.status, is_push=True)
       elif isinstance(response, OppoPlayResponse):
         await self._handle_play_response(response.status)
       elif isinstance(response, OppoUpdatePlayStatusResponse):
@@ -262,8 +292,26 @@ class OppoDevice:
     except:
       _LOGGER.warning("Error updating state.", exc_info=True)
 
-  async def _handle_power_response(self, new_status: PowerStatus):
-    """Handles power change events"""
+  async def _handle_power_response(self, new_status: PowerStatus, is_push: bool = False):
+    """Handle a power status, gating stale solicited replies.
+
+    Command-generation gating for the off->on->off bounce: after we command a
+    power transition (POF/PON/POW) the commanded target is held as the
+    authoritative power state. A *solicited* reply (QPW/POF/PON/POW ->
+    OppoPowerResponse) that contradicts the target is a late answer to a query
+    issued before the command, so it's dropped. An *unsolicited* push (UPW ->
+    OppoUpdatePowerStatusResponse) is a genuine device-initiated change, so it
+    is always trusted and becomes the new target.
+    """
+    if is_push:
+      # Genuine device-initiated change; it defines the new authoritative state.
+      self._power_target = new_status
+    elif self._power_target is not None and new_status != self._power_target:
+      _LOGGER.debug(
+        "Ignoring stale power %s (commanded/expected %s)", new_status, self._power_target
+      )
+      return
+
     if self.power_status != new_status:
       self.power_status = new_status
       if self.power_status == PowerStatus.ON:
@@ -271,6 +319,11 @@ class OppoDevice:
         await self._client.async_send_command(OppoSetVerboseModeCommand(SetVerboseMode.VERBOSE))
         #request an update of the state since it was OFF/DISCONNECTED
         await self.async_request_update()
+      else:
+        #powered off/standby: drop stale playback state (position/status) so a
+        #later power-on doesn't briefly surface the pre-off position while the
+        #player boots. The power gate (_power_target) is intentionally kept.
+        self._reset_runtime_state()
 
   async def _handle_play_response(self, new_status: PlayStatus):
     """Handles play status change events"""
