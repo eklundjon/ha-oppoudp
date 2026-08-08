@@ -29,6 +29,9 @@ from homeassistant.helpers.dispatcher import async_dispatcher_send
 
 from .connection import OppoConnection
 from .const import (
+    CONF_BAUDRATE,
+    CONF_URL,
+    DEFAULT_BAUDRATE,
     DEFAULT_PORT,
     SIGNAL_CLIENT_CREATED,
     SIGNAL_CONNECTED,
@@ -45,7 +48,6 @@ from .oppoudpsdk.response import get_response
 
 _LOGGER = logging.getLogger(__name__)
 
-CONF_URL = "url"
 # Pacing between consecutive commands. The device caps commands at ~25 bytes and
 # asks callers to "allow time for processing" (docs/PROTOCOL.md); a burst of
 # ~20 state queries on connect/power-on is spread out rather than fired at once.
@@ -72,7 +74,10 @@ class OppoController:
     def __init__(self, hass: HomeAssistant, config_entry: ConfigEntry) -> None:
         self._hass = hass
         self._config_entry = config_entry
-        self._conn = OppoConnection(entry_url(config_entry))
+        self._conn = OppoConnection(
+            entry_url(config_entry),
+            baudrate=config_entry.data.get(CONF_BAUDRATE, DEFAULT_BAUDRATE),
+        )
         self._conn.set_handlers(
             on_message=self._on_line,
             on_connection_lost=self._on_lost,
